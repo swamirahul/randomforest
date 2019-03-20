@@ -1,0 +1,105 @@
+import pandas as pd
+import numpy as np
+from scipy import stats
+from datetime import datetime
+from sklearn import preprocessing
+from sklearn.model_selection import KFold
+from sklearn.linear_model import LinearRegression
+import matplotlib.pyplot as plt
+data = pd.read_csv('/Users/vaibhavswami/Downloads/data/abc.csv')
+data['year']=pd.DatetimeIndex(data['date']).year
+data['month']=pd.DatetimeIndex(data['date']).month
+data['dayofweek']=pd.DatetimeIndex(data['date']).dayofweek
+data['qtr']=pd.DatetimeIndex(data['date']).quarter
+data['weekdayname']=pd.DatetimeIndex(data['date']).weekday_name
+data['day']=pd.DatetimeIndex(data['date']).day
+data.head()
+# removing the outliers
+std_dev=3
+data = data[(np.abs(stats.zscore(data['cpm'])) < float(std_dev))]
+
+
+
+res = data[['age_min']]
+X=res
+
+y = pd.DataFrame(data['cpm'])
+model = LinearRegression()
+scores = []
+kfold = KFold(n_splits=3, shuffle=True, random_state=42)
+for i, (train, test) in enumerate(kfold.split(X, y)):
+ model.fit(X.iloc[train,:], y.iloc[train,:])
+ score = model.score(X.iloc[test,:], y.iloc[test,:])
+ scores.append(score)
+print(scores)
+
+
+res = data[['age_min','age_max','year','month','dayofweek','qtr','weekdayname','female','male','day']]
+# Binarize the categorical variables
+X=pd.get_dummies(res, columns=["age_min","age_max","year","month","dayofweek","qtr","weekdayname","female","male"],drop_first=True)
+X.head()
+
+# drop_first = True removes multi-collinearity
+
+data["cpm"].hist()
+
+
+y = pd.DataFrame(data['cpm'])
+model = LinearRegression()
+scores = []
+kfold = KFold(n_splits=3, shuffle=True, random_state=42)
+for i, (train, test) in enumerate(kfold.split(X, y)):
+ model.fit(X.iloc[train,:], y.iloc[train,:])
+ scores.append(model.score(X.iloc[test,:], y.iloc[test,:]))
+print(scores)
+
+
+# Binarize the categorical variables
+X=pd.get_dummies(res, columns=["age_min","age_max","year","month","dayofweek","qtr","weekdayname","female","male"],drop_first=True)
+X.head(10)
+
+
+# Use numpy to convert to arrays
+import numpy as np
+# Labels are the values we want to predict
+labels = np.array(data['cpm'])
+# Remove the labels from the features
+# axis 1 refers to the columns
+#features= data.drop('cpm', axis = 1)
+# Saving feature names for later use
+feature_list = list(X.columns)
+# Convert to numpy array
+features = np.array(X)
+
+
+# Using Skicit-learn to split data into training and testing sets
+from sklearn.model_selection import train_test_split
+# Split the data into training and testing sets
+train_features, test_features, train_labels, test_labels = train_test_split(features, labels, test_size = 0.20, random_state = 42)
+
+print('Training Features Shape:', train_features.shape)
+print('Training Labels Shape:', train_labels.shape)
+print('Testing Features Shape:', test_features.shape)
+print('Testing Labels Shape:', test_labels.shape)
+
+
+# Import the model we are using
+from sklearn.ensemble import RandomForestRegressor
+# Instantiate model with 1000 decision trees
+rf = RandomForestRegressor(n_estimators = 1000, random_state = 42)
+# Train the model on training data
+rf.fit(train_features, train_labels)
+
+# Use the forest's predict method on the test data
+predictions = rf.predict(test_features)
+# Calculate the absolute errors
+errors = abs(predictions - test_labels)
+# Print out the mean absolute error (mae)
+print('Mean Absolute Error:', round(np.mean(errors), 2), 'degrees.')
+
+
+# Calculate mean absolute percentage error (MAPE)
+mape = 100 * (errors / test_labels)
+# Calculate and display accuracy
+accuracy = 100 - np.mean(mape)
+print('Accuracy:', round(accuracy, 2), '%.')
